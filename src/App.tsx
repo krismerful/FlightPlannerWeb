@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import 'leaflet/dist/leaflet.css';
 import { FlightMap } from './components/Map/FlightMap';
 import { FlightTable } from './components/Grid/FlightTable';
@@ -13,6 +13,38 @@ function App() {
     const mission = useFlightStore((state) => state);
     const undo = useFlightStore((state) => state.undo);
     const redo = useFlightStore((state) => state.redo);
+
+    const [leftWidth, setLeftWidth] = useState(60);
+    const isDragging = useRef(false);
+
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        isDragging.current = true;
+        document.body.style.cursor = 'col-resize';
+    }, []);
+
+    const handleMouseUp = useCallback(() => {
+        isDragging.current = false;
+        document.body.style.cursor = 'default';
+    }, []);
+
+    const handleMouseMove = useCallback((e: MouseEvent) => {
+        if (!isDragging.current) return;
+        const newWidth = (e.clientX / window.innerWidth) * 100;
+        if (newWidth > 20 && newWidth < 80) { // Keep between 20% and 80%
+            setLeftWidth(newWidth);
+        }
+    }, []);
+
+    useEffect(() => {
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        }
+    }, [handleMouseMove, handleMouseUp]);
+
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,7 +70,7 @@ function App() {
 
     return (
         <div className="flex h-screen w-screen flex-row">
-            <div className="w-[60%] h-full border-r border-slate-300 relative">
+            <div className="h-full relative" style={{ width: `${leftWidth}%` }}>
                 <FlightMap />
 
                 {/* Export Toolbar */}
@@ -134,7 +166,14 @@ function App() {
 
                 </div>
             </div>
-            <div className="w-[40%] h-full flex flex-col">
+
+            {/* Draggable Divider */}
+            <div
+                className="w-1 cursor-col-resize hover:bg-blue-500 bg-slate-300 active:bg-blue-600 transition-colors z-[2000] flex-shrink-0"
+                onMouseDown={handleMouseDown}
+            />
+
+            <div className="h-full flex flex-col" style={{ width: `calc(${100 - leftWidth}% - 4px)` }}>
                 <div className="bg-slate-800 text-white p-2 font-bold text-center">
                     Flight Plan Data
                 </div>

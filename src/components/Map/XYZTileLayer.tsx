@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { TileLayer, useMap } from 'react-leaflet';
+import { TileLayer } from 'react-leaflet';
+import { createLayerComponent } from '@react-leaflet/core';
 import L from 'leaflet';
 import localforage from 'localforage';
 
@@ -48,28 +48,28 @@ const IndexedDBTileLayer = L.GridLayer.extend({
     }
 });
 
-const CustomIndexedDBLayer = ({ storeName }: { storeName: string }) => {
-    const map = useMap();
-
-    useEffect(() => {
-        // @ts-ignore - Custom options defined in extend not recognized by Leaflet's base GridLayer types
-        const layer = new IndexedDBTileLayer({
-            storeName,
-            minZoom: 10,
-            maxZoom: 15,
-            opacity: 0.7,
-            noWrap: true
-        });
-
-        layer.addTo(map);
-
-        return () => {
-            layer.remove();
-        };
-    }, [map, storeName]);
-
-    return null;
+const createIndexedDBLayer = (props: { storeName: string }, context: any) => {
+    const instance = new (IndexedDBTileLayer as any)({
+        storeName: props.storeName,
+        minZoom: 10,
+        maxZoom: 15,
+        opacity: 0.7,
+        noWrap: true
+    });
+    return { instance, context };
 };
+
+const updateIndexedDBLayer = (instance: any, props: any, prevProps: any) => {
+    if (props.storeName !== prevProps.storeName) {
+        instance.options.storeName = props.storeName;
+        instance.redraw();
+    }
+};
+
+const CustomIndexedDBLayer = createLayerComponent<any, any>(
+    createIndexedDBLayer,
+    updateIndexedDBLayer
+);
 
 const XYZTileLayer = ({ tileUrl }: XYZTileLayerProps) => {
     // Check if it's our custom indexeddb protocol
