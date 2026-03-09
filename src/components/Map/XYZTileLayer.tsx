@@ -9,6 +9,16 @@ interface XYZTileLayerProps {
 
 // Create a custom Leaflet GridLayer for IndexedDB
 const IndexedDBTileLayer = L.GridLayer.extend({
+    // @ts-ignore
+    initialize: function (options: any) {
+        // @ts-ignore
+        L.GridLayer.prototype.initialize.call(this, options);
+        this.store = localforage.createInstance({
+            name: 'FlightPlanner_Tiles',
+            storeName: options.storeName
+        });
+        console.log(`[XYZTileLayer] Ready for map: ${options.storeName}`);
+    },
     createTile: function (coords: L.Coords, done: (error: any, tile: HTMLImageElement) => void) {
         const tile = document.createElement('img');
 
@@ -17,16 +27,17 @@ const IndexedDBTileLayer = L.GridLayer.extend({
             tile.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
         };
 
-        const storeName = this.options.storeName;
-        // Invert Y if needed, assuming tms=false for standard XYZ
         const key = `${coords.z}/${coords.x}/${coords.y}`;
+        // Possible fallback if user uploaded TMS (inverted Y) instead of XYZ
+        const maxY = Math.pow(2, coords.z) - 1;
+        const tmsKey = `${coords.z}/${coords.x}/${maxY - coords.y}`;
 
-        const store = localforage.createInstance({
-            name: 'FlightPlanner_Tiles',
-            storeName: storeName
-        });
+        const store = this.store;
 
-        store.getItem<Blob>(key).then((blob: Blob | null) => {
+        store.getItem(key).then((blob: Blob | null) => {
+            if (blob) return blob;
+            return store.getItem(tmsKey); // Fallback attempt
+        }).then((blob: any) => {
             if (blob) {
                 const objectUrl = URL.createObjectURL(blob);
                 tile.onload = () => {
@@ -35,10 +46,11 @@ const IndexedDBTileLayer = L.GridLayer.extend({
                 };
                 tile.src = objectUrl;
             } else {
+                console.log(`[XYZTileLayer] Missed tile: ${key}`);
                 tile.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
                 done(null, tile);
             }
-        }).catch((err) => {
+        }).catch((err: any) => {
             console.error("Error loading tile", err);
             tile.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
             done(err, tile);
@@ -51,8 +63,8 @@ const IndexedDBTileLayer = L.GridLayer.extend({
 const createIndexedDBLayer = (props: { storeName: string }, context: any) => {
     const instance = new (IndexedDBTileLayer as any)({
         storeName: props.storeName,
-        minZoom: 10,
-        maxZoom: 15,
+        minZoom: 1,
+        maxZoom: 22,
         opacity: 0.7,
         noWrap: true
     });
