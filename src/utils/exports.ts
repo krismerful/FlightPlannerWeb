@@ -118,9 +118,10 @@ export const exportToPPTX = async (mission: MissionData) => {
   // Helper to format time as HH:MM:SS
   const formatTime = (minutes: number | undefined): string => {
     if (!minutes) return '-';
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.floor(minutes % 60);
-    const secs = Math.floor((minutes % 1) * 60);
+    const totalSeconds = Math.round(minutes * 60);
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
     return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -319,20 +320,30 @@ export const exportToPPTX = async (mission: MissionData) => {
 };
 
 export const exportToSD = (mission: MissionData) => {
-  const afpContent = exportToAFP(mission);
-  const wptContent = exportToWPT(mission);
+  try {
+    const afpContent = exportToAFP(mission);
+    const wptContent = exportToWPT(mission);
 
-  downloadFile(`${mission.title.replace(/\s+/g, '_')}.afp`, afpContent, 'application/xml');
-  downloadFile(`${mission.title.replace(/\s+/g, '_')}.wpt`, wptContent, 'application/xml');
+    downloadFile(`${mission.title.replace(/\s+/g, '_')}.afp`, afpContent, 'application/xml');
+    downloadFile(`${mission.title.replace(/\s+/g, '_')}.wpt`, wptContent, 'application/xml');
+  } catch (error: any) {
+    alert(error.message || 'An error occurred during SD export.');
+    console.error(error);
+  }
 };
 
 export const exportToF = async (mission: MissionData, existingSymbolsXML?: string) => {
-  const flightPlans = await generateFlightPlansXML(mission);
-  downloadFile('FlightPlans.xml', flightPlans.xml, 'application/xml');
-  downloadFile('FlightPlans.sha', flightPlans.hash, 'text/plain');
+  try {
+    const flightPlans = await generateFlightPlansXML(mission);
+    downloadFile('FlightPlans.xml', flightPlans.xml, 'application/xml');
+    downloadFile('FlightPlans.sha', flightPlans.hash, 'text/plain');
 
-  const symbols = await generateSymbolsXML(mission, flightPlans.waypointUIDs, existingSymbolsXML);
-  downloadFile('Symbols.xml', symbols.xml, 'application/xml');
-  downloadFile('Symbols.sha', symbols.hash, 'text/plain');
+    const symbols = await generateSymbolsXML(mission, flightPlans.waypointUIDs, existingSymbolsXML);
+    downloadFile('Symbols.xml', symbols.xml, 'application/xml');
+    downloadFile('Symbols.sha', symbols.hash, 'text/plain');
+  } catch (error: any) {
+    alert(error.message || 'An error occurred during F format export.');
+    console.error(error);
+  }
 };
 

@@ -51,8 +51,9 @@ declare module '@tanstack/react-table' {
 // --- Helper: Time Formatter ---
 const formatTime = (minutes: number | undefined) => {
     if (minutes === undefined) return '-';
-    const min = Math.floor(minutes);
-    const sec = Math.round((minutes - min) * 60);
+    const totalSeconds = Math.round(minutes * 60);
+    const min = Math.floor(totalSeconds / 60);
+    const sec = totalSeconds % 60;
     return `${min}:${sec.toString().padStart(2, '0')}`;
 };
 
@@ -355,9 +356,10 @@ export const FlightTable = () => {
             cell: (info) => {
                 const totalMins = info.getValue();
                 if (totalMins === undefined) return '-';
-                const hours = Math.floor(totalMins / 60);
-                const mins = Math.floor(totalMins % 60);
-                const secs = Math.round((totalMins - Math.floor(totalMins)) * 60);
+                const totalSeconds = Math.round(totalMins * 60);
+                const hours = Math.floor(totalSeconds / 3600);
+                const mins = Math.floor((totalSeconds % 3600) / 60);
+                const secs = Math.floor(totalSeconds % 60);
                 return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             },
         }),
